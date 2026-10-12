@@ -173,6 +173,9 @@ export const bookkeeping = (): TranscriptRecord =>
 export const systemNotice = ({ at }: { readonly at: string }): TranscriptRecord =>
   TranscriptRecordSchema.parse({ type: "system", timestamp: at, cwd: WORKSPACE });
 
+export const queueOperation = ({ at }: { readonly at: string }): TranscriptRecord =>
+  TranscriptRecordSchema.parse({ type: "queue-operation", timestamp: at });
+
 type ToolCallOptions = {
   readonly at: string;
   readonly tool?: string;

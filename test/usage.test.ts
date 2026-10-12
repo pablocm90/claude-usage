@@ -9,6 +9,7 @@ import {
   interruption,
   notification,
   prompt,
+  queueOperation,
   session,
   skillLoad,
   systemNotice,
@@ -252,6 +253,56 @@ describe("summariseUsage: split by repo", () => {
       { repo: "acme-backend", activeSeconds: 120, costUsd: expect.closeTo(3) },
       { repo: "acme-frontend", activeSeconds: 120, costUsd: expect.closeTo(4.5) },
     ]);
+  });
+
+  test("a session launched inside a worktree starts in that worktree's repo, not in a repo named after the task", () => {
+    const feature = onlyFeature(
+      session({
+        records: [
+          queueOperation({ at: at(0) }),
+          queueOperation({ at: at(1) }),
+          assistant({ at: at(2), cwd: worktree("acme-backend", "auth"), tokens: costing(1) }),
+        ],
+      }),
+    );
+
+    expect(feature?.repos.map((r) => r.repo)).toEqual(["acme-backend"]);
+  });
+
+  test("a repo whose folder name has spaces still has its worktrees recognised", () => {
+    const feature = onlyFeature(
+      session({
+        records: [
+          queueOperation({ at: at(0) }),
+          queueOperation({ at: at(1) }),
+          assistant({ at: at(2), cwd: worktree("Ping Pong", "me-card"), tokens: costing(1) }),
+        ],
+      }),
+    );
+
+    expect(feature).toMatchObject({ feature: "me-card", repos: [{ repo: "Ping Pong" }] });
+  });
+
+  test("a space in a tool call separates arguments, it does not join them into one repo name", () => {
+    const feature = onlyFeature(
+      session({
+        records: [
+          assistant({
+            at: at(0),
+            cwd: worktree("acme-backend", "auth"),
+            toolInputs: [
+              {
+                command:
+                  "cat /home/me/Code/acme/.claude/handoffs/auth.md acme-frontend/.claude/worktrees/auth/plan.md",
+              },
+            ],
+            tokens: costing(1),
+          }),
+        ],
+      }),
+    );
+
+    expect(feature?.repos.map((r) => r.repo)).toEqual(["acme-backend"]);
   });
 });
 
